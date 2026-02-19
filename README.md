@@ -2,6 +2,8 @@
 
 We stripped away everything unnecessary. No complex settings, no intrusive ads, and no paid subscriptions. Just pure focus.
 
+Test here: [adhd-focus](https://arxivi.github.io/adhd-focus/)
+
 **🧠 Why it works?**
 
 Overcoming Time Blindness:
@@ -37,6 +39,8 @@ Track your progress unobtrusively. Unlock achievements for your first steps and 
 * This app is ideal for students, programmers, creative professionals, and anyone struggling with procrastination or ADHD symptoms.
 
 * Download ADHD-FOCUS and take back control of your attention today!
+
+Test here: [adhd-focus](https://arxivi.github.io/adhd-focus/)
 
 Keywords (Tags)
 ADHD, pomodoro timer, focus, brown noise, neurodivergent, productivity, time blindness, visual timer, open source, concentration tool.
