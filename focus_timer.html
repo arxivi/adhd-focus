@@ -1,0 +1,679 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>ADHD-FOCUS | Open Source</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap');
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #09090b; /* Zinc-950 */
+            color: #e4e4e7;
+            overflow: hidden; /* App-like feel */
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        /* Custom Range Slider */
+        input[type=range] { -webkit-appearance: none; background: transparent; }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none; height: 20px; width: 20px;
+            border-radius: 50%; background: #ef4444; cursor: pointer; margin-top: -8px; 
+            box-shadow: 0 0 15px rgba(239, 68, 68, 0.6);
+            border: 2px solid #18181b;
+        }
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%; height: 4px; cursor: pointer; background: #27272a; border-radius: 2px;
+        }
+
+        /* Animations */
+        .timer-active { animation: breathe 4s infinite ease-in-out; }
+        @keyframes breathe {
+            0%, 100% { filter: drop-shadow(0 0 5px rgba(239, 68, 68, 0.2)); }
+            50% { filter: drop-shadow(0 0 20px rgba(239, 68, 68, 0.5)); }
+        }
+
+        /* Buttons & States */
+        .noise-btn { position: relative; overflow: hidden; transition: all 0.2s; }
+        .noise-btn.active { background-color: #ef4444; border-color: #ef4444; color: white; box-shadow: 0 0 10px rgba(239, 68, 68, 0.3); }
+        
+        /* Modals */
+        .modal-overlay {
+            opacity: 0; pointer-events: none; transition: opacity 0.2s ease;
+        }
+        .modal-overlay.open { opacity: 1; pointer-events: all; }
+        .modal-content { transform: scale(0.95) translateY(10px); transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1); }
+        .modal-overlay.open .modal-content { transform: scale(1) translateY(0); }
+
+        /* Achievement Cards */
+        .ach-card { @apply bg-zinc-800/50 rounded-xl p-3 border border-zinc-700/50 flex flex-col items-center text-center transition-all; }
+        .ach-card.locked { @apply opacity-40 grayscale; }
+        .ach-card.unlocked { @apply border-yellow-500/30 bg-yellow-900/10; }
+        .ach-icon { @apply text-2xl mb-1; }
+    </style>
+</head>
+<body class="h-screen flex flex-col bg-black">
+
+    <!-- App Header -->
+    <header class="w-full px-6 py-4 flex justify-between items-center z-20">
+        <div class="flex items-center gap-2">
+            <div class="w-2 h-2 rounded-full bg-red-500 shadow-[0_0_10px_rgba(239,68,68,0.8)]"></div>
+            <span id="app-title" class="text-sm font-black tracking-[0.2em] text-zinc-300">ADHD-FOCUS</span>
+        </div>
+        <div class="flex gap-3">
+             <!-- Info Button -->
+             <button onclick="openInfo()" class="p-2 rounded-full bg-zinc-900 text-zinc-400 hover:text-white hover:bg-zinc-800 transition">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+            </button>
+            <!-- Stats Button -->
+            <button onclick="openStats()" class="p-2 rounded-full bg-zinc-900 text-zinc-400 hover:text-yellow-400 hover:bg-zinc-800 transition relative">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+            </button>
+            <!-- Settings Button -->
+            <button onclick="openSettings()" class="p-2 rounded-full bg-zinc-900 text-zinc-400 hover:text-white hover:bg-zinc-800 transition">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Content Area -->
+    <main class="flex-grow flex flex-col items-center justify-center px-6 relative z-10 w-full max-w-md mx-auto">
+        
+        <!-- Timer Visual -->
+        <div class="relative mb-10 group cursor-pointer active:scale-95 transition-transform duration-200" id="timer-container" onclick="toggleTimer()">
+            <svg width="280" height="280" viewBox="0 0 100 100" class="transform -rotate-90 drop-shadow-2xl">
+                <!-- Track -->
+                <circle cx="50" cy="50" r="45" fill="none" stroke="#18181b" stroke-width="6" />
+                <!-- Progress -->
+                <circle id="progress-ring" cx="50" cy="50" r="22.5" fill="none" stroke="#ef4444" stroke-width="45" 
+                        stroke-dasharray="141.37" stroke-dashoffset="0" stroke-linecap="butt"
+                        style="transition: stroke-dashoffset 0.5s linear;" />
+            </svg>
+            <div class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                <span id="time-display" class="text-6xl font-black text-white tracking-tighter tabular-nums drop-shadow-lg">25:00</span>
+                <span id="status-text" class="text-xs text-zinc-500 mt-2 font-bold uppercase tracking-widest">Ready</span>
+            </div>
+        </div>
+
+        <!-- Quick Presets -->
+        <div class="grid grid-cols-4 gap-3 w-full mb-8">
+            <button onclick="setTimer(5)" class="h-10 rounded-xl bg-zinc-900 border border-zinc-800 text-xs font-bold text-zinc-400 hover:bg-zinc-800 hover:text-white transition">5</button>
+            <button onclick="setTimer(15)" class="h-10 rounded-xl bg-zinc-900 border border-zinc-800 text-xs font-bold text-zinc-400 hover:bg-zinc-800 hover:text-white transition">15</button>
+            <button onclick="setTimer(30)" class="h-10 rounded-xl bg-zinc-900 border border-zinc-800 text-xs font-bold text-zinc-400 hover:bg-zinc-800 hover:text-white transition">30</button>
+            <button onclick="setTimer(60)" class="h-10 rounded-xl bg-zinc-900 border border-zinc-800 text-xs font-bold text-zinc-400 hover:bg-zinc-800 hover:text-white transition">60</button>
+        </div>
+
+        <!-- Start Button -->
+        <button id="toggle-btn" onclick="toggleTimer()" class="w-full py-5 rounded-2xl bg-gradient-to-r from-red-600 to-red-700 text-white font-black text-lg shadow-lg shadow-red-900/40 transition-all active:scale-[0.98] active:shadow-none mb-8 border-t border-red-500/30">
+            START FOCUS
+        </button>
+
+        <!-- Audio Mixer -->
+        <div class="w-full">
+            <div class="flex justify-between items-end mb-3 px-1">
+                <span id="lbl-sound" class="text-[10px] font-bold uppercase text-zinc-500 tracking-widest">Neuro Audio</span>
+                <button id="mute-btn" class="text-zinc-600 hover:text-white transition">
+                   <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"></path></svg>
+                </button>
+            </div>
+            
+            <div class="grid grid-cols-3 gap-2 mb-2">
+                 <button onclick="selectSound('brown')" id="btn-brown" class="noise-btn active py-3 rounded-lg bg-zinc-900/50 border border-zinc-800 text-[10px] font-bold uppercase text-zinc-400 hover:bg-zinc-800 transition">Brown</button>
+                 <button onclick="selectSound('pink')" id="btn-pink" class="noise-btn py-3 rounded-lg bg-zinc-900/50 border border-zinc-800 text-[10px] font-bold uppercase text-zinc-400 hover:bg-zinc-800 transition">Pink</button>
+                 <button onclick="selectSound('white')" id="btn-white" class="noise-btn py-3 rounded-lg bg-zinc-900/50 border border-zinc-800 text-[10px] font-bold uppercase text-zinc-400 hover:bg-zinc-800 transition">White</button>
+            </div>
+            <!-- All Sounds Unlocked -->
+            <div class="grid grid-cols-2 gap-2">
+                <button onclick="selectSound('flow')" id="btn-flow" class="noise-btn py-3 rounded-lg bg-zinc-900 border border-zinc-800 text-[10px] font-bold uppercase text-zinc-500 transition flex items-center justify-center gap-2">
+                    <span id="txt-flow">Flow</span> <span>🎵</span>
+                </button>
+                <button onclick="selectSound('rain')" id="btn-rain" class="noise-btn py-3 rounded-lg bg-zinc-900 border border-zinc-800 text-[10px] font-bold uppercase text-zinc-500 transition flex items-center justify-center gap-2">
+                    <span id="txt-rain">Rain</span> <span>🌧️</span>
+                </button>
+            </div>
+            
+            <input type="range" id="volume-slider" min="0" max="1" step="0.05" value="0.2" class="w-full h-1 bg-zinc-800 rounded-lg mt-5 accent-zinc-500">
+        </div>
+
+    </main>
+
+    <!-- INFO MODAL -->
+    <div id="info-modal" class="modal-overlay fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-md p-6">
+        <div class="modal-content w-full sm:max-w-sm bg-zinc-900 border border-zinc-800 rounded-3xl p-6 shadow-2xl overflow-y-auto max-h-[80vh]">
+             <div class="flex justify-between items-center mb-4">
+                <h3 class="text-xl font-black text-white" id="info-title">How it works</h3>
+                <button onclick="closeInfo()" class="w-8 h-8 rounded-full bg-zinc-800 flex items-center justify-center text-zinc-400 hover:bg-zinc-700">✕</button>
+            </div>
+            <div class="space-y-4 text-sm text-zinc-400 leading-relaxed">
+                <div><h4 class="text-white font-bold mb-1" id="info-vis-title">1. Visual Timer</h4><p id="info-vis-desc">Seeing the red circle shrink helps your brain understand time passing better than numbers. It reduces anxiety about deadlines.</p></div>
+                <div><h4 class="text-white font-bold mb-1" id="info-noise-title">2. Color Noise</h4><p id="info-noise-desc">Brown noise (lower frequency) calms the ADHD brain by drowning out distractions without being annoying.</p></div>
+                <div><h4 class="text-white font-bold mb-1" id="info-bin-title">3. Binaural Beats</h4><p id="info-bin-desc">The 'Flow' sound uses two slightly different tones to encourage your brain to enter a deep focus state (Theta waves).</p></div>
+            </div>
+            <button onclick="closeInfo()" class="w-full mt-6 py-3 bg-zinc-800 text-white font-bold rounded-xl hover:bg-zinc-700">OK</button>
+        </div>
+    </div>
+
+    <!-- STATS MODAL -->
+    <div id="stats-modal" class="modal-overlay fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/90 backdrop-blur-md sm:p-4">
+        <div class="modal-content w-full sm:max-w-sm bg-zinc-900 sm:rounded-3xl rounded-t-3xl border-t sm:border border-zinc-800 p-6 shadow-2xl h-[85vh] sm:h-auto overflow-y-auto">
+            <div class="flex justify-between items-center mb-6">
+                <h3 id="modal-stats-title" class="text-xl font-black text-white">My Progress</h3>
+                <button onclick="closeStats()" class="w-8 h-8 rounded-full bg-zinc-800 flex items-center justify-center text-zinc-400 hover:bg-zinc-700">✕</button>
+            </div>
+            <div class="bg-zinc-800 rounded-2xl p-5 mb-6 flex justify-between items-center">
+                <div><span class="text-xs uppercase font-bold text-zinc-500">Total Focus</span><div class="text-3xl font-black text-white mt-1"><span id="stat-total">0</span> <span class="text-sm font-normal text-zinc-400">min</span></div></div>
+                <div class="text-right"><span class="text-xs uppercase font-bold text-zinc-500">Sessions</span><div class="text-3xl font-black text-white mt-1" id="stat-sessions">0</div></div>
+            </div>
+            <h4 id="lbl-achievements" class="text-sm font-bold text-zinc-400 mb-4 uppercase tracking-wide">Achievements</h4>
+            <div class="grid grid-cols-2 gap-3 mb-6">
+                <div id="ach-1" class="ach-card locked"><div class="ach-icon">🌱</div><div class="text-xs font-bold text-white mb-1">First Step</div><div class="text-[10px] text-zinc-500">Finish 1 session</div></div>
+                <div id="ach-2" class="ach-card locked"><div class="ach-icon">🔥</div><div class="text-xs font-bold text-white mb-1">On Fire</div><div class="text-[10px] text-zinc-500">5 sessions total</div></div>
+                <div id="ach-3" class="ach-card locked"><div class="ach-icon">🧘</div><div class="text-xs font-bold text-white mb-1">Zen Master</div><div class="text-[10px] text-zinc-500">100 mins total</div></div>
+                <div id="ach-4" class="ach-card locked"><div class="ach-icon">🛡️</div><div class="text-xs font-bold text-white mb-1">Unstoppable</div><div class="text-[10px] text-zinc-500">500 mins total</div></div>
+            </div>
+            <button onclick="resetStats()" class="w-full py-2 text-xs text-zinc-700 hover:text-red-500 transition">Reset Progress</button>
+        </div>
+    </div>
+
+    <!-- SETTINGS MODAL -->
+    <div id="settings-modal" class="modal-overlay fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/80 backdrop-blur-sm sm:p-4">
+        <div class="modal-content w-full sm:max-w-xs bg-zinc-900 sm:rounded-3xl rounded-t-3xl border-t sm:border border-zinc-800 p-6 shadow-2xl">
+            <div class="flex justify-between items-center mb-6">
+                <h3 id="modal-settings-title" class="text-lg font-bold text-white">Settings</h3>
+                <button onclick="closeSettings()" class="w-8 h-8 rounded-full bg-zinc-800 flex items-center justify-center text-zinc-400 hover:bg-zinc-700">✕</button>
+            </div>
+            <div class="mb-6">
+                <label id="lbl-lang" class="block text-xs font-bold text-zinc-500 uppercase mb-2">Language</label>
+                <select id="lang-select" onchange="changeLanguage(this.value)" class="w-full bg-black text-zinc-300 text-sm py-3 px-4 rounded-xl border border-zinc-800 outline-none focus:border-red-500 appearance-none">
+                    <option value="cs">🇨🇿 Čeština</option><option value="da">🇩🇰 Dansk</option><option value="de">🇩🇪 Deutsch</option><option value="nl">🇳🇱 Dutch</option>
+                    <option value="en" selected>🇬🇧 English</option><option value="es">🇪🇸 Español</option><option value="nl_be">🇧🇪 Vlaams</option><option value="fr">🇫🇷 Français</option>
+                    <option value="it">🇮🇹 Italiano</option><option value="pl">🇵🇱 Polski</option><option value="pt">🇵🇹 Português</option><option value="sk">🇸🇰 Slovenčina</option>
+                    <option value="sv">🇸🇪 Svenska</option><option value="uk">🇺🇦 Українська</option>
+                </select>
+            </div>
+            <div class="mt-4 text-center border-t border-zinc-800 pt-4">
+                 <button class="text-xs text-zinc-600">v2.1.0 (Open Source) • ADHD-FOCUS</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ACHIEVEMENT TOAST -->
+    <div id="toast" class="fixed bottom-20 left-1/2 transform -translate-x-1/2 bg-zinc-800 border border-yellow-500/50 text-white px-6 py-3 rounded-full shadow-2xl flex items-center gap-3 opacity-0 pointer-events-none transition-all duration-500 z-[60]">
+        <span class="text-2xl">🏆</span>
+        <div><div class="text-[10px] uppercase font-bold text-yellow-500">Achievement Unlocked!</div><div id="toast-msg" class="text-sm font-bold">First Step</div></div>
+    </div>
+
+    <script>
+        // --- STATE ---
+        let timeLeft = 25 * 60;
+        let totalTime = 25 * 60;
+        let timerInterval = null;
+        let isRunning = false;
+        let curLang = 'en'; 
+        let stats = { totalMinutes: 0, sessions: 0, unlocked: [], partialSeconds: 0 };
+
+        // --- INIT ---
+        window.onload = function() {
+            loadStats();
+            changeLanguage('en'); 
+        };
+
+        // --- STATS LOGIC ---
+        function loadStats() {
+            const saved = localStorage.getItem('adhd_focus_stats');
+            if (saved) { stats = { ...stats, ...JSON.parse(saved) }; updateStatsUI(); }
+        }
+        function saveStats() {
+            localStorage.setItem('adhd_focus_stats', JSON.stringify(stats));
+            updateStatsUI();
+        }
+        function resetStats() {
+            if(confirm('Reset all progress?')) {
+                stats = { totalMinutes: 0, sessions: 0, unlocked: [], partialSeconds: 0 };
+                saveStats();
+            }
+        }
+        function updateStatsUI() {
+            document.getElementById('stat-total').textContent = stats.totalMinutes;
+            document.getElementById('stat-sessions').textContent = stats.sessions;
+            checkAchievement(1, stats.sessions >= 1);
+            checkAchievement(2, stats.sessions >= 5);
+            checkAchievement(3, stats.totalMinutes >= 100);
+            checkAchievement(4, stats.totalMinutes >= 500);
+        }
+        function checkAchievement(id, condition) {
+            const el = document.getElementById(`ach-${id}`);
+            if (condition) {
+                if (!stats.unlocked.includes(id)) {
+                    stats.unlocked.push(id);
+                    localStorage.setItem('adhd_focus_stats', JSON.stringify(stats));
+                    showToast(el.querySelector('.text-xs').textContent);
+                }
+                el.classList.remove('locked'); el.classList.add('unlocked');
+            } else {
+                el.classList.add('locked'); el.classList.remove('unlocked');
+            }
+        }
+        function showToast(msg) {
+            const toast = document.getElementById('toast');
+            document.getElementById('toast-msg').textContent = msg;
+            toast.classList.remove('opacity-0', 'translate-y-10', 'pointer-events-none');
+            setTimeout(() => { toast.classList.add('opacity-0', 'translate-y-10', 'pointer-events-none'); }, 3000);
+        }
+
+        // --- TIMER & AUDIO ---
+        const progressRing = document.getElementById('progress-ring');
+        const timeDisplay = document.getElementById('time-display');
+        const timerContainer = document.getElementById('timer-container');
+        const circumference = 2 * Math.PI * 22.5;
+        progressRing.style.strokeDasharray = `${circumference} ${circumference}`;
+
+        function updateDisplay() {
+            const m = Math.floor(timeLeft / 60);
+            const s = timeLeft % 60;
+            timeDisplay.textContent = `${m < 10 ? '0' : ''}${m}:${s < 10 ? '0' : ''}${s}`;
+            const offset = circumference * (1 - (timeLeft / totalTime));
+            progressRing.style.strokeDashoffset = offset; 
+        }
+
+        function toggleTimer() {
+            if (isRunning) pauseTimer();
+            else startTimer();
+        }
+
+        function startTimer() {
+            if (timeLeft <= 0) return;
+            initAudio(); 
+            if(audioContext && audioContext.state === 'suspended') audioContext.resume();
+            if(!isMuted) toggleSound(true);
+
+            isRunning = true;
+            timerContainer.classList.add('timer-active');
+            const btn = document.getElementById('toggle-btn');
+            btn.classList.replace('bg-gradient-to-r', 'bg-zinc-800');
+            btn.classList.remove('from-red-600', 'to-red-700', 'text-white', 'shadow-lg');
+            btn.classList.add('bg-zinc-800', 'text-zinc-400');
+            updateStateText();
+
+            timerInterval = setInterval(() => {
+                timeLeft--;
+                
+                // Incremental Minute Tracking
+                stats.partialSeconds = (stats.partialSeconds || 0) + 1;
+                if (stats.partialSeconds >= 60) {
+                    stats.totalMinutes++;
+                    stats.partialSeconds = 0;
+                    saveStats();
+                }
+
+                updateDisplay();
+                if (timeLeft <= 0) finishTimer();
+            }, 1000);
+        }
+
+        function pauseTimer() {
+            isRunning = false;
+            clearInterval(timerInterval);
+            timerContainer.classList.remove('timer-active');
+            toggleSound(false);
+            const btn = document.getElementById('toggle-btn');
+            btn.classList.remove('bg-zinc-800', 'text-zinc-400');
+            btn.classList.add('bg-gradient-to-r', 'from-red-600', 'to-red-700', 'text-white', 'shadow-lg');
+            updateStateText();
+        }
+
+        function finishTimer() {
+            clearInterval(timerInterval);
+            isRunning = false;
+            timeLeft = 0;
+            updateDisplay();
+            timerContainer.classList.remove('timer-active');
+            toggleSound(false);
+            playBeep();
+            updateStateText();
+            stats.sessions += 1;
+            saveStats();
+        }
+
+        function setTimer(minutes) {
+            pauseTimer();
+            totalTime = minutes * 60;
+            timeLeft = totalTime;
+            updateDisplay();
+            updateStateText();
+        }
+
+        // --- AUDIO ENGINE ---
+        let audioContext; let soundSource = null; let gainNode = null; let isMuted = false;
+        let currentSoundType = 'brown'; let droneOscillators = []; let rainNode = null;
+
+        function initAudio() {
+            if (!audioContext) {
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                gainNode = audioContext.createGain();
+                gainNode.connect(audioContext.destination);
+                gainNode.gain.value = document.getElementById('volume-slider').value;
+            }
+        }
+        function createNoiseBuffer(type) {
+            if (!audioContext) return;
+            const bufferSize = 2 * audioContext.sampleRate;
+            const buffer = audioContext.createBuffer(1, bufferSize, audioContext.sampleRate);
+            const output = buffer.getChannelData(0);
+            if (type === 'white') for (let i = 0; i < bufferSize; i++) output[i] = Math.random() * 2 - 1;
+            else if (type === 'pink') {
+                let b0=0, b1=0, b2=0, b3=0, b4=0, b5=0, b6=0;
+                for (let i = 0; i < bufferSize; i++) {
+                    const white = Math.random() * 2 - 1;
+                    b0 = 0.99886 * b0 + white * 0.0555179; b1 = 0.99332 * b1 + white * 0.0750759;
+                    b2 = 0.96900 * b2 + white * 0.1538520; b3 = 0.86650 * b3 + white * 0.3104856;
+                    b4 = 0.55000 * b4 + white * 0.5329522; b5 = -0.7616 * b5 - white * 0.0168980;
+                    output[i] = b0 + b1 + b2 + b3 + b4 + b5 + b6 + white * 0.5362; output[i] *= 0.11; b6 = white * 0.115926;
+                }
+            } else if (type === 'brown') {
+                let lastOut = 0.0;
+                for (let i = 0; i < bufferSize; i++) {
+                    const white = Math.random() * 2 - 1; output[i] = (lastOut + (0.02 * white)) / 1.02;
+                    lastOut = output[i]; output[i] *= 3.5; 
+                }
+            }
+            return buffer;
+        }
+        function startDrone() {
+            stopAllSounds(); if(!audioContext) return;
+            const osc1 = audioContext.createOscillator(); osc1.type = 'sine'; osc1.frequency.value = 110;
+            const osc2 = audioContext.createOscillator(); osc2.type = 'sine'; osc2.frequency.value = 114; 
+            const osc3 = audioContext.createOscillator(); osc3.type = 'triangle'; osc3.frequency.value = 165; 
+            const g1 = audioContext.createGain(); g1.gain.value = 0.4; osc1.connect(g1); g1.connect(gainNode);
+            const g2 = audioContext.createGain(); g2.gain.value = 0.4; osc2.connect(g2); g2.connect(gainNode);
+            const g3 = audioContext.createGain(); g3.gain.value = 0.05; osc3.connect(g3); g3.connect(gainNode);
+            osc1.start(); osc2.start(); osc3.start(); droneOscillators = [osc1, osc2, osc3];
+        }
+        function startRain() {
+            stopAllSounds(); if(!audioContext) return;
+            const buffer = createNoiseBuffer('pink'); rainNode = audioContext.createBufferSource();
+            rainNode.buffer = buffer; rainNode.loop = true;
+            const filter = audioContext.createBiquadFilter(); filter.type = 'lowpass'; filter.frequency.value = 800; 
+            rainNode.connect(filter); filter.connect(gainNode); rainNode.start();
+        }
+        function stopAllSounds() {
+            if (soundSource) { try{soundSource.stop();}catch(e){} soundSource = null; }
+            if (rainNode) { try{rainNode.stop();}catch(e){} rainNode = null; }
+            droneOscillators.forEach(osc => { try { osc.stop(); } catch(e){} }); droneOscillators = [];
+        }
+        function toggleSound(shouldPlay) {
+            if (!audioContext) initAudio();
+            if (shouldPlay) {
+                if (currentSoundType === 'flow') startDrone();
+                else if (currentSoundType === 'rain') startRain();
+                else {
+                    stopAllSounds(); soundSource = audioContext.createBufferSource();
+                    soundSource.buffer = createNoiseBuffer(currentSoundType);
+                    soundSource.loop = true; soundSource.connect(gainNode); soundSource.start();
+                }
+            } else stopAllSounds();
+        }
+        function selectSound(type) {
+            currentSoundType = type;
+            document.querySelectorAll('.noise-btn').forEach(btn => btn.classList.remove('active'));
+            document.getElementById(`btn-${type}`).classList.add('active');
+            if (isRunning && !isMuted) toggleSound(true);
+        }
+        document.getElementById('volume-slider').addEventListener('input', (e) => { if (gainNode) gainNode.gain.value = e.target.value; });
+        document.getElementById('mute-btn').addEventListener('click', () => {
+            isMuted = !isMuted; document.getElementById('mute-btn').classList.toggle('text-red-500', isMuted);
+            if (isRunning) toggleSound(!isMuted);
+        });
+        function playBeep() {
+            if (!audioContext) return;
+            const osc = audioContext.createOscillator(); const g = audioContext.createGain();
+            osc.connect(g); g.connect(audioContext.destination);
+            osc.frequency.setValueAtTime(440, audioContext.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(880, audioContext.currentTime + 0.1);
+            g.gain.setValueAtTime(0.5, audioContext.currentTime);
+            g.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
+            osc.start(); osc.stop(audioContext.currentTime + 0.5);
+        }
+
+        // --- TRANSLATIONS (Cleaned up) ---
+        const translations = {
+            uk: {
+                title: "ФОКУС-РДУГ", ready: "Готовий", focus: "Фокус...", pause: "Пауза", done: "Час вийшов!",
+                start: "РОЗПОЧАТИ", stop: "ПАУЗА", resume: "ПРОДОВЖИТИ", finish: "ГОТОВО",
+                sound: "Нейро Аудіо", flow: "Потік", rain: "Дощ",
+                brown: "Коричн", pink: "Рожевий", white: "Білий",
+                settings: "Налаштування", lang: "Мова",
+                statsTitle: "Мій Прогрес", achTitle: "Досягнення",
+                infoTitle: "Як це працює", 
+                infoVisT: "1. Візуальний Таймер", infoVisD: "Червоне коло зникає, показуючи плин часу. Це краще, ніж цифри, бо знижує тривогу.",
+                infoNoiseT: "2. Кольоровий Шум", infoNoiseD: "Коричневий шум (низький) заспокоює мозок з РДУГ, глушачи відволікання.",
+                infoBinT: "3. Бінауральні Ритми", infoBinD: "Звук 'Потік' використовує дві частоти, щоб налаштувати мозок на глибокий фокус."
+            },
+            en: {
+                title: "ADHD-FOCUS", ready: "Ready", focus: "Focusing...", pause: "Paused", done: "Time's Up!",
+                start: "START FOCUS", stop: "PAUSE", resume: "RESUME", finish: "DONE",
+                sound: "Neuro Audio", flow: "Flow", rain: "Rain",
+                brown: "Brown", pink: "Pink", white: "White",
+                settings: "Settings", lang: "Language",
+                statsTitle: "My Progress", achTitle: "Achievements",
+                infoTitle: "How it works",
+                infoVisT: "1. Visual Timer", infoVisD: "Seeing the red circle shrink helps your brain understand time passing better than numbers.",
+                infoNoiseT: "2. Color Noise", infoNoiseD: "Brown noise (lower frequency) calms the ADHD brain by drowning out distractions.",
+                infoBinT: "3. Binaural Beats", infoBinD: "The 'Flow' sound uses two tones to encourage your brain to enter a deep focus state."
+            },
+            de: {
+                title: "ADHS-FOKUS", ready: "Bereit", focus: "Fokus...", pause: "Pause", done: "Zeit um!",
+                start: "STARTEN", stop: "PAUSE", resume: "WEITER", finish: "FERTIG",
+                sound: "Neuro Audio", flow: "Flow", rain: "Regen",
+                brown: "Braun", pink: "Rosa", white: "Weiß",
+                settings: "Einstellungen", lang: "Sprache",
+                statsTitle: "Mein Fortschritt", achTitle: "Erfolge",
+                infoTitle: "Wie es funktioniert",
+                infoVisT: "1. Visueller Timer", infoVisD: "Der schrumpfende rote Kreis hilft dem Gehirn, Zeit besser zu verstehen als Zahlen.",
+                infoNoiseT: "2. Farbrauschen", infoNoiseD: "Braunes Rauschen beruhigt das ADHS-Gehirn, indem es Ablenkungen übertönt.",
+                infoBinT: "3. Binaurale Beats", infoBinD: "Der 'Flow'-Sound nutzt zwei Töne, um tiefe Konzentration zu fördern."
+            },
+            es: {
+                title: "TDAH-ENFOQUE", ready: "Listo", focus: "Enfoque...", pause: "Pausa", done: "¡Tiempo!",
+                start: "EMPEZAR", stop: "PAUSA", resume: "REANUDAR", finish: "LISTO",
+                sound: "Neuro Audio", flow: "Flujo", rain: "Lluvia",
+                brown: "Marrón", pink: "Rosa", white: "Blanco",
+                settings: "Ajustes", lang: "Idioma",
+                statsTitle: "Mi Progreso", achTitle: "Logros",
+                infoTitle: "Cómo funciona",
+                infoVisT: "1. Temporizador Visual", infoVisD: "Ver el círculo rojo encogerse ayuda a entender el tiempo mejor que los números.",
+                infoNoiseT: "2. Ruido de Color", infoNoiseD: "El ruido marrón calma el cerebro TDAH ahogando distracciones.",
+                infoBinT: "3. Ritmos Binaurales", infoBinD: "El sonido 'Flujo' usa dos tonos para fomentar la concentración profunda."
+            },
+            fr: {
+                title: "TDAH-FOCUS", ready: "Prêt", focus: "Concentration...", pause: "Pause", done: "Terminé!",
+                start: "DÉMARRER", stop: "PAUSE", resume: "REPRENDRE", finish: "FINI",
+                sound: "Neuro Audio", flow: "Flux", rain: "Pluie",
+                brown: "Brun", pink: "Rose", white: "Blanc",
+                settings: "Paramètres", lang: "Langue",
+                statsTitle: "Mon Progrès", achTitle: "Succès",
+                infoTitle: "Comment ça marche",
+                infoVisT: "1. Minuteur Visuel", infoVisD: "Voir le cercle rouge rétrécir aide le cerveau à mieux comprendre le temps.",
+                infoNoiseT: "2. Bruit Coloré", infoNoiseD: "Le bruit brun calme le cerveau TDAH en noyant les distractions.",
+                infoBinT: "3. Sons Binauraux", infoBinD: "Le son 'Flux' utilise deux tons pour encourager la concentration."
+            },
+            pl: {
+                title: "ADHD-FOKUS", ready: "Gotowy", focus: "Skupienie...", pause: "Pauza", done: "Koniec!",
+                start: "START", stop: "PAUZA", resume: "WZNÓW", finish: "GOTOWE",
+                sound: "Neuro Audio", flow: "Przepływ", rain: "Deszcz",
+                brown: "Brąz", pink: "Róż", white: "Biały",
+                settings: "Ustawienia", lang: "Język",
+                statsTitle: "Mój Postęp", achTitle: "Osiągnięcia",
+                infoTitle: "Jak to działa",
+                infoVisT: "1. Wizualny Timer", infoVisD: "Znikające czerwone koło pomaga lepiej czuć czas niż cyfry.",
+                infoNoiseT: "2. Kolorowy Szum", infoNoiseD: "Brązowy szum uspokaja mózg ADHD, zagłuszając rozproszenia.",
+                infoBinT: "3. Dudnienia Różnicowe", infoBinD: "Dźwięk 'Przepływ' pomaga wejść w stan głębokiego skupienia."
+            },
+            sv: {
+                title: "ADHD-FOKUS", ready: "Redo", focus: "Fokus...", pause: "Paus", done: "Klart!",
+                start: "STARTA", stop: "PAUS", resume: "FORTSÄTT", finish: "KLAR",
+                sound: "Neuro Ljud", flow: "Flöde", rain: "Regn",
+                brown: "Brunt", pink: "Rosa", white: "Vitt",
+                settings: "Inställningar", lang: "Språk",
+                statsTitle: "Mitt Framsteg", achTitle: "Prestationer",
+                infoTitle: "Hur det fungerar",
+                infoVisT: "1. Visuell Timer", infoVisD: "Den krympande röda cirkeln hjälper hjärnan att förstå tid bättre.",
+                infoNoiseT: "2. Färgat Brus", infoNoiseD: "Brunt brus lugnar ADHD-hjärnan genom att dämpa distraktioner.",
+                infoBinT: "3. Binaurala Beats", infoBinD: "'Flöde'-ljudet använder två toner för att uppmuntra fokus."
+            },
+            da: {
+                title: "ADHD-FOKUS", ready: "Klar", focus: "Fokus...", pause: "Pause", done: "Færdig!",
+                start: "START", stop: "PAUSE", resume: "FORTSÆT", finish: "FÆRDIG",
+                sound: "Neuro Lyd", flow: "Flow", rain: "Regn",
+                brown: "Brun", pink: "Lyserød", white: "Hvid",
+                settings: "Indstillinger", lang: "Sprog",
+                statsTitle: "Min Fremgang", achTitle: "Præstationer",
+                infoTitle: "Hvordan det virker",
+                infoVisT: "1. Visuel Timer", infoVisD: "Den skrumpende cirkel hjælper hjernen med at forstå tid bedre.",
+                infoNoiseT: "2. Farvet Støj", infoNoiseD: "Brun støj beroliger ADHD-hjernen ved at overdøve distraktioner.",
+                infoBinT: "3. Binaurale Beats", infoBinD: "'Flow' lyden bruger to toner til at fremme fokus."
+            },
+            pt: {
+                title: "TDAH-FOCO", ready: "Pronto", focus: "Foco...", pause: "Pausa", done: "Acabou!",
+                start: "INICIAR", stop: "PAUSA", resume: "RETOMAR", finish: "FEITO",
+                sound: "Neuro Áudio", flow: "Fluxo", rain: "Chuva",
+                brown: "Marrom", pink: "Rosa", white: "Branco",
+                settings: "Configurações", lang: "Idioma",
+                statsTitle: "Meu Progresso", achTitle: "Conquistas",
+                infoTitle: "Como funciona",
+                infoVisT: "1. Timer Visual", infoVisD: "O círculo vermelho diminuindo ajuda o cérebro a entender o tempo.",
+                infoNoiseT: "2. Ruído Colorido", infoNoiseD: "O ruído marrom acalma o cérebro TDAH abafando distrações.",
+                infoBinT: "3. Batidas Binaurais", infoBinD: "O som 'Fluxo' usa dois tons para incentivar o foco profundo."
+            },
+            nl: {
+                title: "ADHD-FOCUS", ready: "Klaar", focus: "Focus...", pause: "Pauze", done: "Klaar!",
+                start: "STARTEN", stop: "PAUZE", resume: "HERVATTEN", finish: "KLAAR",
+                sound: "Neuro Audio", flow: "Flow", rain: "Regen",
+                brown: "Bruin", pink: "Roze", white: "Wit",
+                settings: "Instellingen", lang: "Taal",
+                statsTitle: "Mijn Voortgang", achTitle: "Prestaties",
+                infoTitle: "Hoe het werkt",
+                infoVisT: "1. Visuele Timer", infoVisD: "De krimpende cirkel helpt de tijd beter te begrijpen dan cijfers.",
+                infoNoiseT: "2. Gekleurde Ruis", infoNoiseD: "Bruine ruis kalmeert het ADHD-brein door afleiding te dempen.",
+                infoBinT: "3. Binaurale Beats", infoBinD: "Het 'Flow'-geluid gebruikt twee tonen om focus te stimuleren."
+            },
+            nl_be: {
+                title: "ADHD-FOCUS", ready: "Gereed", focus: "Focus...", pause: "Pauze", done: "Gedaan!",
+                start: "STARTEN", stop: "PAUZE", resume: "HERVATTEN", finish: "KLAAR",
+                sound: "Neuro Audio", flow: "Flow", rain: "Regen",
+                brown: "Bruin", pink: "Roze", white: "Wit",
+                settings: "Instellingen", lang: "Taal",
+                statsTitle: "Mijn Voortgang", achTitle: "Prestaties",
+                infoTitle: "Hoe het werkt",
+                infoVisT: "1. Visuele Timer", infoVisD: "De krimpende cirkel helpt de tijd beter te begrijpen.",
+                infoNoiseT: "2. Gekleurde Ruis", infoNoiseD: "Bruine ruis kalmeert het brein door afleiding te dempen.",
+                infoBinT: "3. Binaurale Beats", infoBinD: "Het 'Flow'-geluid gebruikt twee tonen om focus te stimuleren."
+            },
+            it: {
+                title: "ADHD-FOCUS", ready: "Pronto", focus: "Focus...", pause: "Pausa", done: "Finito!",
+                start: "AVVIA", stop: "PAUSA", resume: "RIPRENDI", finish: "FINE",
+                sound: "Neuro Audio", flow: "Flusso", rain: "Pioggia",
+                brown: "Marrone", pink: "Rosa", white: "Bianco",
+                settings: "Impostazioni", lang: "Lingua",
+                statsTitle: "Mio Progresso", achTitle: "Risultati",
+                infoTitle: "Come funziona",
+                infoVisT: "1. Timer Visivo", infoVisD: "Il cerchio rosso che si restringe aiuta a capire il tempo meglio dei numeri.",
+                infoNoiseT: "2. Rumore Colorato", infoNoiseD: "Il rumore marrone calma il cervello ADHD coprendo le distrazioni.",
+                infoBinT: "3. Battiti Binaurali", infoBinD: "Il suono 'Flusso' usa due toni per incoraggiare la concentrazione."
+            },
+            cs: {
+                title: "ADHD-FOKUS", ready: "Připraven", focus: "Soustředění...", pause: "Pauza", done: "Hotovo!",
+                start: "START", stop: "PAUZA", resume: "POKRAČOVAT", finish: "HOTOVO",
+                sound: "Neuro Audio", flow: "Proud", rain: "Déšť",
+                brown: "Hnědý", pink: "Růžový", white: "Bílý",
+                settings: "Nastavení", lang: "Jazyk",
+                statsTitle: "Můj Pokrok", achTitle: "Úspěchy",
+                infoTitle: "Jak to funguje",
+                infoVisT: "1. Vizuální Časovač", infoVisD: "Zmenšující se červený kruh pomáhá vnímat čas lépe než čísla.",
+                infoNoiseT: "2. Barevný Šum", infoNoiseD: "Hnědý šum uklidňuje ADHD mozek tím, že přehluší rozptýlení.",
+                infoBinT: "3. Binaurální Rytmy", infoBinD: "Zvuk 'Proud' využívá dva tóny k podpoře hlubokého soustředění."
+            },
+            sk: {
+                title: "ADHD-FOKUS", ready: "Pripravený", focus: "Sústredenie...", pause: "Pauza", done: "Hotovo!",
+                start: "ŠTART", stop: "PAUZA", resume: "POKRAČOVAŤ", finish: "HOTOVO",
+                sound: "Neuro Audio", flow: "Prúd", rain: "Dážď",
+                brown: "Hnedý", pink: "Ružový", white: "Biely",
+                settings: "Nastavenia", lang: "Jazyk",
+                statsTitle: "Môj Pokrok", achTitle: "Úspechy",
+                infoTitle: "Ako to funguje",
+                infoVisT: "1. Vizuálny Časovač", infoVisD: "Zmenšujúci sa červený kruh pomáha vnímať čas lepšie ako čísla.",
+                infoNoiseT: "2. Farebný Šum", infoNoiseD: "Hnedý šum upokojuje ADHD mozog tým, že prehluší rozptýlenie.",
+                infoBinT: "3. Binaurálne Rytmy", infoBinD: "Zvuk 'Prúd' využíva dva tóny na podporu hlbokého sústredenia."
+            }
+        };
+
+        function changeLanguage(lang) {
+            curLang = lang;
+            const t = translations[lang];
+            
+            document.getElementById('app-title').textContent = t.title;
+            document.getElementById('lbl-sound').textContent = t.sound;
+            document.getElementById('lbl-lang').textContent = t.lang;
+            document.getElementById('modal-settings-title').textContent = t.settings;
+            document.getElementById('modal-stats-title').textContent = t.statsTitle;
+            document.getElementById('lbl-achievements').textContent = t.achTitle;
+            
+            // Sounds
+            document.getElementById('btn-brown').innerText = t.brown;
+            document.getElementById('btn-pink').innerText = t.pink;
+            document.getElementById('btn-white').innerText = t.white;
+            document.getElementById('txt-flow').textContent = t.flow;
+            document.getElementById('txt-rain').textContent = t.rain;
+
+            // Info Modal
+            document.getElementById('info-title').textContent = t.infoTitle;
+            document.getElementById('info-vis-title').textContent = t.infoVisT;
+            document.getElementById('info-vis-desc').textContent = t.infoVisD;
+            document.getElementById('info-noise-title').textContent = t.infoNoiseT;
+            document.getElementById('info-noise-desc').textContent = t.infoNoiseD;
+            document.getElementById('info-bin-title').textContent = t.infoBinT;
+            document.getElementById('info-bin-desc').textContent = t.infoBinD;
+
+            updateStateText();
+        }
+
+        function updateStateText() {
+            const t = translations[curLang];
+            const btn = document.getElementById('toggle-btn');
+            const status = document.getElementById('status-text');
+
+            if (timeLeft <= 0 && !isRunning && totalTime > 0) { 
+                 btn.textContent = t.finish;
+                 status.textContent = t.done;
+            } else if (isRunning) {
+                btn.textContent = t.stop;
+                status.textContent = t.focus;
+            } else if (!isRunning && timeLeft < totalTime) {
+                btn.textContent = t.resume;
+                status.textContent = t.pause;
+            } else {
+                btn.textContent = t.start;
+                status.textContent = t.ready;
+            }
+        }
+
+        function openSettings() { document.getElementById('settings-modal').classList.add('open'); }
+        function closeSettings() { document.getElementById('settings-modal').classList.remove('open'); }
+        function openStats() { document.getElementById('stats-modal').classList.add('open'); updateStatsUI(); }
+        function closeStats() { document.getElementById('stats-modal').classList.remove('open'); }
+        function openInfo() { document.getElementById('info-modal').classList.add('open'); }
+        function closeInfo() { document.getElementById('info-modal').classList.remove('open'); }
+
+    </script>
+</body>
+</html>
